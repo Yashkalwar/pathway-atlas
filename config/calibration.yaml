@@ -1,0 +1,50 @@
+# Synthetic simulator parameters. Approximate, literature-informed targets; NOT real patient data.
+seed: 42
+n_patients: 13800
+data_end: "2023-12-31"
+dx_start: "2014-01-01"
+dx_end: "2021-12-31"
+p_start_csdmard: 0.93
+p_advanced_given_csdmard: 0.78
+days_dx_to_csdmard_median: 28
+days_csdmard_to_a_median: 140
+# time (days) from symptom onset to first visit / first visit to rheum / rheum to dx
+days_onset_to_first_visit_median: 30
+days_first_visit_to_rheum_median: 75
+days_rheum_to_dx_median: 21
+# line 1 (Therapy A) daily hazards (baseline, before covariate multipliers)
+a_hazard_discontinue: 0.00046
+a_hazard_switch: 0.00028
+a_hazard_escalate: 0.00030
+# later lines
+b_hazard_discontinue: 0.00075
+b_hazard_switch: 0.00040
+# covariate log-hazard coefficients
+beta_age_per_10y: 0.12
+beta_comorbidity: 0.16
+beta_female_discontinue: 0.10
+switch_targets:
+  etanercept: 0.30
+  tocilizumab: 0.25
+  tofacitinib: 0.22
+  abatacept: 0.13
+  rituximab: 0.10
+p_restart_after_discontinue: 0.10
+p_early_censor: 0.08
+hosp_rate_on_therapy_per_year: 0.030
+hosp_rate_off_therapy_per_year: 0.090
+hosp_ra_related_fraction: 0.4
+beta_hosp_comorbidity: 0.30
+er_rate_per_year: 0.25
+
+# Profiles override the base values above. Select with `profile:` or env CALIBRATION_PROFILE.
+# literature: tuned toward US claims studies of first-line biologic initiators (see docs/calibration_sources.md):
+#   ~45-70% persist at 12 months, ~16-24% switch, ~6-23% discontinue, ~15% restart after a gap.
+# manager_example: reproduces the illustrative funnel from the brief (~78% remain / ~14% discontinue / ~8% switch).
+profile: literature
+profiles:
+  literature:
+    a_hazard_discontinue: 0.00080
+    a_hazard_switch: 0.00062
+    p_restart_after_discontinue: 0.15
+  manager_example: {}

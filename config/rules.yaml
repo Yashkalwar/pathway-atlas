@@ -1,0 +1,7 @@
+era_gap_days: 60            # max gap between fills merged into one drug era
+switch_window_days: 90      # new advanced agent starting within this many days after the prior era ends = switch
+combo_overlap_days: 28      # overlap longer than this = add-on (escalation); shorter = cross-titration switch
+followup_days: 730          # max follow-up after index
+funnel_window_days: 365     # default window for the funnel
+washout_days: 365           # required observation before index with no advanced therapy
+initiation_window_days: 90  # RA dx -> any DMARD within this many days counts as initiated

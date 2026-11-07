@@ -1,0 +1,21 @@
+# Local (>2,000,000,000) OMOP concept ids; ingredient-level. Swap for RxNorm ids when mapping real data.
+therapy_a: adalimumab
+drugs:
+  methotrexate:    {id: 2000000101, class: csDMARD}
+  hydroxychloroquine: {id: 2000000102, class: csDMARD}
+  leflunomide:     {id: 2000000103, class: escalation}
+  prednisone:      {id: 2000000104, class: escalation}
+  adalimumab:      {id: 2000000201, class: advanced, moa: TNF inhibitor}
+  etanercept:      {id: 2000000202, class: advanced, moa: TNF inhibitor}
+  tocilizumab:     {id: 2000000203, class: advanced, moa: IL-6 inhibitor}
+  tofacitinib:     {id: 2000000204, class: advanced, moa: JAK inhibitor}
+  abatacept:       {id: 2000000205, class: advanced, moa: T-cell costimulation modulator}
+  rituximab:       {id: 2000000206, class: advanced, moa: anti-CD20}
+conditions:
+  rheumatoid_arthritis: 80809
+  joint_pain_symptom: 2000001001
+  other_inpatient_cause: 2000001002
+visits:
+  inpatient: 9201
+  outpatient: 9202
+  emergency: 9203

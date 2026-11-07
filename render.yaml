@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: pathway-atlas
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: USE_LLM
+        value: "0"

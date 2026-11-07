@@ -1,0 +1,10 @@
+duckdb
+pandas
+numpy
+lifelines
+fastapi
+uvicorn[standard]
+pydantic
+pyyaml
+httpx
+ollama
