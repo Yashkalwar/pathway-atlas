@@ -3,7 +3,7 @@ pandas
 numpy
 lifelines
 fastapi
-uvicorn[standard]
+uvicorn
 pydantic
 pyyaml
 httpx

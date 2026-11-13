@@ -15,18 +15,24 @@ GROUPS = {"age": "age_band", "sex": "sex", "comorbidity": "comorbidity_band"}
 
 class Warehouse:
     def __init__(self, path=None):
-        con = duckdb.connect(str(path or config.DB_PATH), read_only=True)
+        self.path = path or config.DB_PATH
+        con = duckdb.connect(str(self.path), read_only=True)
         q = lambda s: con.execute(s).df()
         self.j = q("SELECT * FROM analytics.index_journey")
         self.ra = q("SELECT * FROM analytics.ra_patients")
         self.events = q("SELECT * FROM analytics.patient_events")
         self.attrition = q("SELECT * FROM analytics.attrition")
         self.build_info = q("SELECT * FROM analytics.build_info").iloc[0].to_dict()
-        self.visits = q("SELECT * FROM visit_occurrence")
-        self.drugs = q("SELECT * FROM drug_exposure")
         con.close()
         self.rules = config.rules()
         self.names = config.drug_by_id()
+
+    def person_table(self, table: str, person_id: int) -> pd.DataFrame:
+        con = duckdb.connect(str(self.path), read_only=True)
+        try:
+            return con.execute(f"SELECT * FROM {table} WHERE person_id = ?", [person_id]).df()
+        finally:
+            con.close()
 
 
 @lru_cache(maxsize=1)
@@ -286,8 +292,8 @@ def attrition(w: Warehouse | None = None):
 def patient_journey(person_id: int, w: Warehouse | None = None):
     w = w or wh()
     ev = w.events[w.events.person_id == person_id]
-    vis = w.visits[w.visits.person_id == person_id]
-    dr = w.drugs[w.drugs.person_id == person_id]
+    vis = w.person_table("visit_occurrence", person_id)
+    dr = w.person_table("drug_exposure", person_id)
     if vis.empty:
         return None
     vt = {9201: "Hospitalization", 9202: "Outpatient", 9203: "ER"}

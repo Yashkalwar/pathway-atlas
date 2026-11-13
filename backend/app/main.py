@@ -15,6 +15,7 @@ from .metrics import core as m
 
 @asynccontextmanager
 async def lifespan(_app):
+    threading.Thread(target=m.wh, daemon=True).start()
     if agent.USE_LLM:
         threading.Thread(target=agent.warm_up, daemon=True).start()
     yield

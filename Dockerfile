@@ -9,7 +9,9 @@ RUN npm run build
 # Stage 2: python app
 FROM python:3.12-slim
 WORKDIR /repo
-ENV USE_LLM=0 PYTHONUNBUFFERED=1
+ENV USE_LLM=0 PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
+    MALLOC_ARENA_MAX=2 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
