@@ -38,6 +38,9 @@ simulate.py -> OMOP tables (DuckDB) -> pathway.py (drug eras -> lines -> events)
   questions go to the local LLM (qwen3:1.7b alone routes 15/25 = 60% correctly, which is why the rule-first design is used).
   The LLM writes the brief; any brief containing numbers not in the tool payload is replaced by a deterministic template.
 - Rules (era gap 60d, switch window 90d, add-on overlap 28d, follow-up 730d) live in `config/rules.yaml`.
+- **Study designer** (Atlas 00, or `POST /api/study`): client-facing form for the epidemiological definitions —
+  washout, permissible gap, switch window, restart/discontinuation conventions, follow-up, unmet-need thresholds.
+  Applying re-derives the whole cohort from raw events in ~10s; presets ship for one-click sensitivity analyses.
 
 ## UI ("Clinical Atlas" design)
 Editorial, medical-journal look: warm paper, Fraunces serif headlines and numerals, IBM Plex Sans/Mono, one semantic color

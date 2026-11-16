@@ -23,6 +23,16 @@ b_hazard_switch: 0.00040
 beta_age_per_10y: 0.12
 beta_comorbidity: 0.16
 beta_female_discontinue: 0.10
+p_high_oop_copay: 0.24
+beta_high_copay_discontinue: 0.68
+b_moa_swap_hazard_mult: 0.68
+crp_baseline_median: 16.0
+crp_controlled_median: 4.0
+crp_flare_median: 24.0
+p_switch_flare_episode: 0.66
+p_switch_ae_episode: 0.16
+p_disc_ae_episode: 0.26
+p_disc_flare_episode: 0.14
 switch_targets:
   etanercept: 0.30
   tocilizumab: 0.25

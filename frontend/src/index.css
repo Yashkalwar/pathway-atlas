@@ -52,6 +52,19 @@ select { font-family: var(--mono); font-size: 12.5px; padding: 7px 10px; border:
 .seg button:not(.on):hover { background: var(--rule2); }
 
 /* ---------- figures ---------- */
+.takeaway { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: baseline; background: #EFECE1; border: 1px solid var(--rule); border-left: 3px solid var(--remain); padding: 13px 18px; margin-bottom: 20px; }
+.tk-tag { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--remain); font-weight: 600; white-space: nowrap; }
+.tk-body { font-size: 14.5px; line-height: 1.55; color: var(--ink); }
+.badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.badge-kv { background: var(--paper2); border: 1px solid var(--rule); padding: 6px 11px; font-size: 12.5px; display: inline-flex; gap: 6px; align-items: baseline; }
+.badge-kv span { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.badge-kv b { font-weight: 600; color: var(--ink); }
+.proxy-bars { display: flex; flex-direction: column; gap: 12px; }
+.p-row { display: grid; grid-template-columns: 230px 1fr 130px; gap: 12px; align-items: center; font-size: 13.5px; }
+.p-tracks { display: flex; flex-direction: column; gap: 4px; }
+.p-track { display: flex; align-items: center; gap: 8px; height: 12px; background: var(--rule2); position: relative; }
+.p-track i { display: block; height: 100%; transition: width .4s ease; }
+.p-nums { text-align: right; font-family: var(--mono); font-size: 11.5px; color: var(--ink2); font-variant-numeric: tabular-nums; }
 .figure { background: var(--paper2); border: 1px solid var(--rule); padding: 20px 22px 18px; margin-bottom: 20px; position: relative; }
 .figlabel { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink2); padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--rule2); }
 .caption { font-size: 13px; color: var(--muted); margin: 12px 0 0; line-height: 1.5; max-width: 90ch; }
@@ -152,4 +165,39 @@ table.ledger { border-collapse: collapse; width: 100%; font-size: 13.5px; }
   .shell { grid-template-columns: 1fr; } .rail { position: static; height: auto; }
   .stages { flex-direction: row; flex-wrap: wrap; } .stages::before { display: none; }
   .page { padding: 28px 20px 60px; } .cols { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2, 1fr); }
+  .p-row { grid-template-columns: 1fr; gap: 4px; } .takeaway { grid-template-columns: 1fr; gap: 4px; }
 }
+
+/* ---------- study designer (Atlas 00) ---------- */
+.presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.preset { text-align: left; background: var(--paper2); border: 1px solid var(--rule); padding: 12px 14px; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.preset:hover { border-color: var(--ink); box-shadow: 3px 3px 0 var(--rule); }
+.preset b { display: block; font-family: var(--serif); font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.preset span { font-size: 12px; color: var(--ink2); line-height: 1.45; display: block; }
+.protocol { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 22px 0; }
+.psec { background: var(--paper2); border: 1px solid var(--rule); border-top: 3px solid var(--ink); padding: 18px 20px; }
+.psec header h3 { font-family: var(--serif); font-size: 18px; font-weight: 600; margin: 0 0 3px; }
+.psec header p { margin: 0 0 14px; font-size: 12px; color: var(--muted); }
+.field { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; padding: 11px 0; border-top: 1px solid var(--rule2); }
+.field.mod { background: linear-gradient(90deg, rgba(31,111,92,.05), transparent 60%); }
+.flabel { font-weight: 600; font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
+.modtag { font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--remain); border: 1px solid var(--remain); padding: 1px 5px; border-radius: 2px; }
+.fhelp { font-size: 11.5px; color: var(--muted); line-height: 1.5; margin-top: 3px; max-width: 400px; }
+.num-in { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.num-in input { width: 88px; font-family: var(--mono); font-size: 13px; padding: 6px 8px; border: 1px solid var(--ink); background: var(--paper2); text-align: right; }
+.num-in em { font-family: var(--mono); font-style: normal; font-size: 10.5px; color: var(--muted); min-width: 34px; }
+.field select { max-width: 190px; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--ink); background: var(--paper2); padding: 5px 10px; cursor: pointer; font-family: var(--mono); font-size: 11px; color: var(--ink2); }
+.toggle i { width: 12px; height: 12px; border: 1px solid var(--ink); background: transparent; }
+.toggle.on i { background: var(--remain); border-color: var(--remain); }
+.applybar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 14px; background: var(--paper2); border: 1px solid var(--ink); padding: 14px 18px; margin: 8px 0 22px; box-shadow: 4px 4px 0 var(--rule); z-index: 5; }
+.applyname { flex: 1; display: flex; align-items: center; gap: 18px; }
+.applyname label { font-family: var(--mono); font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; display: flex; align-items: center; gap: 8px; }
+.applyname input { font-family: var(--mono); font-size: 13px; padding: 6px 8px; border: 0; border-bottom: 1px solid var(--ink); background: transparent; width: 170px; }
+button.primary { background: var(--ink); color: var(--paper); border: 1px solid var(--ink); font-family: var(--mono); font-size: 12.5px; padding: 10px 18px; cursor: pointer; text-transform: uppercase; letter-spacing: .05em; }
+button.primary:disabled { opacity: .55; cursor: wait; }
+button.ghost { background: transparent; color: var(--ink2); border: 1px solid var(--rule); font-family: var(--mono); font-size: 12px; padding: 10px 16px; cursor: pointer; }
+button.ghost:hover { border-color: var(--ink); color: var(--ink); }
+.formerr { border: 1px solid var(--hosp); color: var(--hosp); font-family: var(--mono); font-size: 12.5px; padding: 10px 14px; margin: 0 0 18px; background: #faf0ef; }
+.figure.applied { border-color: var(--remain); }
+@media (max-width: 1100px) { .protocol { grid-template-columns: 1fr; } }

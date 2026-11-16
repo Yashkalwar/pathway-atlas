@@ -9,17 +9,28 @@ MODEL = os.getenv("OLLAMA_MODEL", "qwen3:1.7b")
 HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 USE_LLM = os.getenv("USE_LLM", "1") != "0"
 
-SYSTEM = ("You are an analytics assistant for a pharma real-world-evidence demo on rheumatoid arthritis (synthetic data). "
-          "Always answer by calling exactly one tool that best matches the question. Therapy A is adalimumab. "
-          "If the user mentions months or years, convert to days (12 months=365). Never invent numbers.")
-NARRATE = ("Write a concise answer (3-5 sentences) to the user's question using ONLY the numbers in the JSON data. "
-           "Do not add numbers that are not in the data. Mention that the data is synthetic. Plain text, no markdown headers.")
+SYSTEM = (
+    "You are an analytics assistant for a pharma real-world-evidence demo on rheumatoid arthritis (synthetic data). "
+    "Always answer by calling exactly one tool that best matches the question. Therapy A is adalimumab. "
+    "If the user mentions months or years, convert to days (12 months=365). Never invent numbers."
+)
+NARRATE = (
+    "Write a concise answer (3-5 sentences) to the user's question using ONLY the numbers in the JSON data. "
+    "Do not add numbers that are not in the data. Mention that the data is synthetic. Plain text, no markdown headers."
+)
 
-SUGGESTIONS = ["What happens to patients after they initiate Therapy A?", "What are the most common treatment sequences?",
-               "How long until patients switch from Therapy A?", "Which patients are most likely to discontinue?",
-               "How many patients get hospitalized after leaving Therapy A?", "How long does it take to get diagnosed and treated?",
-               "What is the persistence on Therapy A at 12 months?", "Which treatments do patients switch to?",
-               "How many patients escalate therapy?", "What are the biggest unmet needs?"]
+SUGGESTIONS = [
+    "Why do patients discontinue or switch from Therapy A?",
+    "Does swapping MoA beat TNFi cycling on 2nd-line persistence?",
+    "What happens to patients after they initiate Therapy A?",
+    "What are the multivariable hazard ratios for discontinuation?",
+    "What happens to patients after they discontinue Therapy A?",
+    "How do high out-of-pocket copays affect discontinuation?",
+    "What are the most common treatment sequences?",
+    "What is the persistence on Therapy A at 12 months?",
+    "How long does it take to get diagnosed and treated?",
+    "What are the biggest unmet needs?",
+]
 
 
 def _window(q):
@@ -32,8 +43,19 @@ def _window(q):
 
 def rule_route(q: str):
     s, w = q.lower(), _window(q)
-    grp = ("sex" if re.search(r"\b(sex|gender|female|male|women|men)\b", s) else "comorbid" if "comorbid" in s
-           else "age" if re.search(r"\b(age|aged|ages|older|younger|young|elderly)\b", s) else None)
+    if re.search(r"\bmoa\b|mechanism of action|tnfi?.*cycl|cycl.*swap|swap.*moa|second[- ]line.*persist|persist.*second[- ]line|2nd[- ]line", s):
+        return "get_second_line_outcomes", {}
+    if re.search(r"hazard ratio|cox\b|multivariable|independent predictor|risk factor|risk driver", s):
+        return "get_risk_factors", {}
+    if re.search(r"\bwhy\b.*(discontinu|stop|switch|leave|drop)|reason.*(discontinu|stop|switch|leave)|driver.*(discontinu|stop|switch)|proxy|(after|once).*discontinu|post[- ]discontinu|drug holiday|untreated after", s):
+        return "get_leave_drivers", {"window_days": w}
+    grp = (
+        "copay" if re.search(r"\b(copay|out[- ]of[- ]pocket|oop)\b", s)
+        else "sex" if re.search(r"\b(sex|gender|female|male|women|men)\b", s)
+        else "comorbid" if "comorbid" in s
+        else "age" if re.search(r"\b(age|aged|ages|older|younger|young|elderly)\b", s)
+        else None
+    )
     if re.search(r"unmet|treatment gap|care gap|opportunit|biggest", s):
         return "get_unmet_need", {}
     if grp or re.search(r"subgroup|which patients|most likely|segment|compare", s):
@@ -60,47 +82,76 @@ def rule_route(q: str):
 
 
 def template_answer(tool: str, d: dict) -> str:
-    syn = " (Synthetic data.)"
+    syn = " (Synthetic OMOP data.)"
     if tool == "get_funnel":
         p = d["pct"]
         sw = d["median_days_to_switch_among_switchers"]
         dest = ", ".join(f"{k} ({v})" for k, v in list(d["switch_destinations"].items())[:3])
-        return (f"Of {d['evaluable_patients']:,} adalimumab (Therapy A) initiators evaluable at {d['window_days']} days, "
-                f"{d['remain_on_therapy']:,} ({p['remain']}%) remain on therapy, {d['discontinued']:,} ({p['discontinued']}%) discontinue and "
-                f"{d['switched']:,} ({p['switched']}%) switch to another advanced therapy"
-                + (f" (mainly {dest})" if dest else "") + f". {d['hospitalized']:,} ({p['hospitalized']}%) are hospitalized"
-                + (f"; the median time to switch among switchers is {sw:.0f} days." if sw else ".")
-                + f" {d['hospitalized_after_leaving_therapy']:,} were admitted after leaving Therapy A, and "
-                f"{d['adherence_pct_pdc_80']}% had good adherence (PDC >= 80%)." + syn)
+        return (
+            f"Of {d['evaluable_patients']:,} adalimumab (Therapy A) initiators evaluable at {d['window_days']} days, "
+            f"{d['remain_on_therapy']:,} ({p['remain']}%) remain on therapy, {d['discontinued']:,} ({p['discontinued']}%) discontinue and "
+            f"{d['switched']:,} ({p['switched']}%) switch to another advanced therapy"
+            + (f" (mainly {dest})" if dest else "") + f". {d['hospitalized']:,} ({p['hospitalized']}%) are hospitalized"
+            + (f"; the median time to switch among switchers is {sw:.0f} days." if sw else ".")
+            + f" {d['hospitalized_after_leaving_therapy']:,} were admitted after leaving Therapy A, and "
+            f"{d['adherence_pct_pdc_80']}% had fixed-window PDC >= 80% ({d.get('active_pct_pdc_80')}% while actively on therapy)." + syn
+        )
+    if tool == "get_leave_drivers":
+        sw_str = ", ".join(f"{c['category']} ({c['switch_pct']}%)" for c in d["proxy_categories"][:3])
+        dc_str = ", ".join(f"{c['category']} ({c['discontinue_pct']}%)" for c in d["proxy_categories"][:4])
+        fates = ", ".join(f"{f['fate']} ({f['pct']}%)" for f in d["post_discontinuation_fate"])
+        return (
+            f"In the {d['lookback_days']}-day OMOP lookback at {d['window_days']} days: switches (n={d['n_switched']:,}) are preceded by "
+            f"{sw_str}. Discontinuations (n={d['n_discontinued']:,}) reflect {dc_str}. "
+            f"After discontinuing Therapy A: {fates}." + syn
+        )
+    if tool == "get_second_line_outcomes":
+        top_ag = ", ".join(f"{a['agent']} ({a['persist_365']}% at 12m, n={a['n']:,})" for a in d["by_agent"][:3])
+        return d["takeaway"] + f" Top 2nd-line agents: {top_ag}." + syn
+    if tool == "get_risk_factors":
+        hrs = ", ".join(f"{r['factor']} HR {r['hr']:.2f} (95% CI {r['ci_lo']:.2f}-{r['ci_hi']:.2f})" for r in d["discontinuation_cox"][:3])
+        return f"Adjusted Cox discontinuation hazard ratios (n={d['n']:,}): {hrs}." + syn
     if tool == "get_pathways":
         tp = d["top_pathways"][:4]
         return "Most common treatment sequences: " + "; ".join(f"{x['path']} ({x['n']:,}, {x['pct']}%)" for x in tp) + "." + syn
     if tool == "get_survival":
         o = d.get("overall")
         if o:
-            return (f"{d['definition']} At 6, 12 and 24 months: {o['at_180']:.1%}, {o['at_365']:.1%}, {o['at_730']:.1%} "
-                    f"(n={o['n']:,}, events={o['events']:,})." + syn)
+            return (
+                f"{d['definition']} At 6, 12 and 24 months: {o['at_180']:.1%}, {o['at_365']:.1%}, {o['at_730']:.1%} "
+                f"(n={o['n']:,}, events={o['events']:,})." + syn
+            )
         return d["definition"] + " Grouped curves are shown in the chart." + syn
     if tool == "get_utilization":
-        return (f"Across {d['patient_years']:,.0f} patient-years: {d['hospitalizations_per_100py']} hospitalizations per 100 patient-years "
-                f"({d['ra_hospitalizations_per_100py']} RA-related), {d['er_per_100py']} ER visits per 100 patient-years, "
-                f"{d['outpatient_per_py']} outpatient visits per patient-year, mean cost ${d['mean_cost_per_patient_year']:,.0f} per patient-year." + syn)
+        return (
+            f"Across {d['patient_years']:,.0f} patient-years: {d['hospitalizations_per_100py']} hospitalizations per 100 patient-years "
+            f"({d['ra_hospitalizations_per_100py']} RA-related), {d['er_per_100py']} ER visits per 100 patient-years, "
+            f"{d['outpatient_per_py']} outpatient visits per patient-year, mean cost ${d['mean_cost_per_patient_year']:,.0f} per patient-year." + syn
+        )
     if tool == "get_diagnosis_and_treatment_timing":
         a, b, c, i = (d["time_to_diagnosis_days"], d["time_to_specialist_days"], d["time_to_treatment_days"], d["treatment_initiation_rate"])
-        return (f"Median time from symptom onset to RA diagnosis is {a['median']:.0f} days, from first visit to a rheumatologist {b['median']:.0f} days, "
-                f"and from diagnosis to first DMARD {c['median']:.0f} days. {i['pct_within_window']}% start a DMARD within {i['window_days']} days." + syn)
+        return (
+            f"Median time from symptom onset to RA diagnosis is {a['median']:.0f} days, from first visit to a rheumatologist {b['median']:.0f} days, "
+            f"and from diagnosis to first DMARD {c['median']:.0f} days. {i['pct_within_window']}% start a DMARD within {i['window_days']} days." + syn
+        )
     if tool == "get_escalation":
-        return (f"{d['escalated']:,} of {d['n']:,} patients ({d['pct']}%) escalate within {d['window_days']} days"
-                + (f", at a median of {d['median_days_to_escalation']:.0f} days" if d["median_days_to_escalation"] else "")
-                + f". Agents added: {d['agents_added']}." + syn)
+        return (
+            f"{d['escalated']:,} of {d['n']:,} patients ({d['pct']}%) escalate within {d['window_days']} days"
+            + (f", at a median of {d['median_days_to_escalation']:.0f} days" if d["median_days_to_escalation"] else "")
+            + f". Agents added: {d['agents_added']}." + syn
+        )
     if tool == "get_subgroups":
-        rows = "; ".join(f"{g['group']}: {g['pct_remain']}% remain, {g['pct_discontinued']}% discontinue, {g['pct_switched']}% switch, {g['pct_hospitalized']}% hospitalized (n={g['n']:,})"
-                         for g in d["groups"])
+        rows = "; ".join(
+            f"{g['group']}: {g['pct_remain']}% remain, {g['pct_discontinued']}% discontinue, {g['pct_switched']}% switch, {g['pct_hospitalized']}% hospitalized (n={g['n']:,})"
+            for g in d["groups"]
+        )
         return f"By {d['by']} at {d['window_days']} days - {rows}." + syn
     if tool == "get_unmet_need":
         return "Unmet-need signals: " + "; ".join(f"{f['label']}: {f['n']:,} ({f['pct']}%)" for f in d["flags"]) + "." + syn
-    return (f"{d['index_patients']:,} patients initiated Therapy A; at {d['window_days']} days {d['pct_persistent']}% remain, "
-            f"{d['pct_discontinued']}% discontinue, {d['pct_switched']}% switch and {d['pct_hospitalized']}% are hospitalized." + syn)
+    return (
+        f"{d['index_patients']:,} patients initiated Therapy A; at {d['window_days']} days {d['pct_persistent']}% remain, "
+        f"{d['pct_discontinued']}% discontinue, {d['pct_switched']}% switch and {d['pct_hospitalized']}% are hospitalized." + syn
+    )
 
 
 def _nums(text):
@@ -111,7 +162,7 @@ def numbers_grounded(answer: str, payload, question: str) -> bool:
     allowed = _nums(json.dumps(payload, default=str)) | _nums(question)
     allowed |= {round(a * 100, 1) for a in allowed if a < 1.5} | {round(a / 100, 1) for a in allowed} | {a / 12 for a in allowed}
     for n in _nums(answer):
-        if n in allowed or n in (6, 12, 24, 3, 2, 1, 100, 365, 180, 730) or round(n) in {round(a) for a in allowed}:
+        if n in allowed or n in (6, 12, 24, 3, 2, 1, 100, 365, 180, 730, 60, 90, 250) or round(n) in {round(a) for a in allowed}:
             continue
         return False
     return True
@@ -131,14 +182,17 @@ def ask(question: str) -> dict:
     elif USE_LLM:
         try:
             c = _client()
-            r = c.chat(model=MODEL, messages=[{"role": "system", "content": SYSTEM}, {"role": "user", "content": question}],
-                       tools=T.ollama_tools(), think=False, options={"temperature": 0, "num_ctx": 4096}, keep_alive="30m")
+            r = c.chat(
+                model=MODEL,
+                messages=[{"role": "system", "content": SYSTEM}, {"role": "user", "content": question}],
+                tools=T.ollama_tools(), think=False, options={"temperature": 0, "num_ctx": 4096}, keep_alive="30m",
+            )
             calls = r.message.tool_calls or []
             if calls and calls[0].function.name in T.TOOLS:
                 tool, args = calls[0].function.name, dict(calls[0].function.arguments or {})
-                T.TOOLS[tool][0](**args)  # validate
+                T.TOOLS[tool][0](**args)
                 engine = "llm"
-        except Exception as e:  # noqa: BLE001 - any LLM failure falls back to the deterministic router
+        except Exception as e:  # noqa: BLE001
             err, tool = str(e)[:200], None
     if tool is None:
         tool, args = "get_overview", {}
@@ -147,21 +201,29 @@ def ask(question: str) -> dict:
     if USE_LLM and engine != "rules":
         try:
             slim = {k: v for k, v in data.items() if k not in ("sunburst", "nodes", "links")} if isinstance(data, dict) else data
-            if tool == "get_survival":
+            if tool in ("get_survival", "get_second_line_outcomes"):
                 slim = json.loads(json.dumps(data, default=str))
-                for g in ([slim.get("overall")] if slim.get("overall") else list(slim.get("groups", {}).values())):
-                    for k in ("x", "y", "lo", "hi"):
-                        g.pop(k, None)
-            n = _client().chat(model=MODEL, messages=[{"role": "system", "content": NARRATE},
-                                                       {"role": "user", "content": f"Question: {question}\nData: {json.dumps(slim, default=str)[:6000]}"}],
-                               think=False, options={"temperature": 0.1, "num_ctx": 4096}, keep_alive="30m")
+                for g in ([slim.get("overall")] if slim.get("overall") else list((slim.get("groups") or slim.get("modalities") or {}).values())):
+                    if isinstance(g, dict):
+                        for k in ("x", "y", "lo", "hi"):
+                            g.pop(k, None)
+            n = _client().chat(
+                model=MODEL,
+                messages=[
+                    {"role": "system", "content": NARRATE},
+                    {"role": "user", "content": f"Question: {question}\nData: {json.dumps(slim, default=str)[:6000]}"},
+                ],
+                think=False, options={"temperature": 0.1, "num_ctx": 4096}, keep_alive="30m",
+            )
             txt = (n.message.content or "").strip()
             if txt and numbers_grounded(txt, slim, question):
                 answer, narration = txt, "llm"
         except Exception as e:  # noqa: BLE001
             err = str(e)[:200]
-    return {"question": question, "tool": tool, "args": args, "answer": answer, "data": data, "engine": engine,
-            "narration": narration, "model": MODEL if engine != "rules" else None, "error": err}
+    return {
+        "question": question, "tool": tool, "args": args, "answer": answer, "data": data,
+        "engine": engine, "narration": narration, "model": MODEL if engine != "rules" else None, "error": err,
+    }
 
 
 def warm_up():

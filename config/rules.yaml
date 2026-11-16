@@ -5,3 +5,13 @@ followup_days: 730          # max follow-up after index
 funnel_window_days: 365     # default window for the funnel
 washout_days: 365           # required observation before index with no advanced therapy
 initiation_window_days: 90  # RA dx -> any DMARD within this many days counts as initiated
+proxy_lookback_days: 60     # days prior to switch/discontinuation scanned for clinical/claims proxies
+high_copay_threshold: 250   # mean patient out-of-pocket paid >= USD threshold on advanced therapy fills
+elevated_crp_mg_l: 10.0     # CRP > 10 mg/L indicates active systemic inflammation
+# client study-designer defaults (also settable via POST /api/study)
+min_era_days: 0             # drop drug eras shorter than this before deriving lines
+restart_same_line: true     # same drug resuming after a gap = restart of the same line (false = new episode)
+disc_date_rule: supply_end  # supply_end | expected_refill — where the discontinuation date is recorded
+pdc_threshold: 0.8          # PDC counted as good adherence
+early_fail_days: 180        # leaving line 1 before this = early primary failure
+multi_line_threshold: 3     # >= this many advanced lines = heavy cycling flag

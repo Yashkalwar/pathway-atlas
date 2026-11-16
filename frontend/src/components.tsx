@@ -25,6 +25,15 @@ export function Figure({ label, caption, def, children, className = '' }: { labe
   )
 }
 
+export function Takeaway({ label = 'Clinical takeaway', children }: { label?: string; children: ReactNode }) {
+  return (
+    <aside className="takeaway">
+      <span className="tk-tag">{label}</span>
+      <div className="tk-body">{children}</div>
+    </aside>
+  )
+}
+
 export function Stat({ value, label, note, tone }: { value: ReactNode; label: string; note?: ReactNode; tone?: string }) {
   return (
     <div className="stat" style={tone ? { borderTopColor: tone } : undefined}>

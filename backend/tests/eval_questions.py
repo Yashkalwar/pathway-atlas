@@ -25,4 +25,9 @@ EVAL = [
     ("How do patients with comorbidities do?", "get_subgroups"),
     ("What are the biggest unmet needs?", "get_unmet_need"),
     ("Where are the treatment gaps and opportunities?", "get_unmet_need"),
+    ("Why do patients discontinue or switch from Therapy A?", "get_leave_drivers"),
+    ("What happens to patients after they discontinue Therapy A?", "get_leave_drivers"),
+    ("Does swapping MoA beat TNFi cycling on 2nd-line persistence?", "get_second_line_outcomes"),
+    ("What are the multivariable hazard ratios for discontinuation?", "get_risk_factors"),
+    ("How do high out-of-pocket copays affect discontinuation?", "get_subgroups"),
 ]

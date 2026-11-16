@@ -17,13 +17,14 @@ def fills(pid, drug, start_day, n, gap=0):
     return rows
 
 
-def run(rows, obs_end_day=1500, obs_start_day=-1000):
+def run(rows, obs_end_day=1500, obs_start_day=-1000, rules=None):
+    rules = rules or RULES
     de = pd.DataFrame(rows, columns=["person_id", "drug_concept_id", "drug_exposure_start_date", "drug_exposure_end_date", "days_supply"])
     pids = sorted(de.person_id.unique())
     obs = pd.DataFrame({"person_id": pids, "observation_period_start_date": T0 + pd.Timedelta(days=obs_start_day),
                         "observation_period_end_date": T0 + pd.Timedelta(days=obs_end_day)})
-    eras = build_eras(de, RULES["era_gap_days"])
-    j, ev, attr = derive_lines(eras, obs, DRUGS, "ada", RULES)
+    eras = build_eras(de, rules["era_gap_days"], rules.get("min_era_days", 0))
+    j, ev, attr = derive_lines(eras, obs, DRUGS, "ada", rules)
     return eras, (j.set_index("person_id") if len(j) else j), ev, attr
 
 
@@ -66,3 +67,27 @@ def test_washout_and_not_first_line_excluded():
     rows = fills(1, "ada", 0, 3) + fills(2, "eta", 0, 3) + fills(2, "ada", 200, 3)
     _, j, _, attr = run(rows, obs_start_day=-100)
     assert attr["n_index"] == 0 and attr["n_failed_washout"] == 1 and attr["n_first_advanced_not_therapy_a"] == 1
+
+
+def test_restart_as_new_episode():
+    """restart_same_line=False: resuming the same drug after the gap = discontinuation + new episode."""
+    rows = fills(1, "ada", 0, 4) + fills(1, "ada", 400, 30)
+    _, j, ev, _ = run(rows, rules={**RULES, "restart_same_line": False})
+    r = j.loc[1]
+    assert r["first_leave"] == "discontinue" and r["n_lines"] == 2 and r["sequence"] == "ada > ada"
+    assert r["had_restart"] == 0
+    assert (ev.event_type == "discontinue").sum() == 1
+
+
+def test_disc_date_expected_refill():
+    """disc_date_rule=expected_refill: discontinuation is dated when the permissible gap ran out."""
+    rows = fills(1, "ada", 0, 6)  # era ends 5*28+27=167; expected_refill -> 167+60=227
+    _, j, _, _ = run(rows, obs_end_day=1400, rules={**RULES, "disc_date_rule": "expected_refill"})
+    assert j.loc[1, "first_leave"] == "discontinue" and j.loc[1, "discontinue_days"] == 167 + 60
+
+
+def test_min_era_days_drops_short_eras():
+    """A single short course (e.g. one infusion) is dropped before line derivation."""
+    rows = fills(1, "ada", 0, 1) + fills(2, "ada", 0, 6)
+    _, j, _, attr = run(rows, rules={**RULES, "min_era_days": 90})
+    assert attr["n_index"] == 1 and 2 in j.index and 1 not in j.index

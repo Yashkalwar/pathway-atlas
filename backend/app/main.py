@@ -10,8 +10,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import config
+from . import study
 from .llm import agent
 from .metrics import core as m
+
 
 @asynccontextmanager
 async def lifespan(_app):
@@ -24,7 +26,7 @@ async def lifespan(_app):
 app = FastAPI(title="Treatment Pathway Intelligence (synthetic RA POC)", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-Group = Literal["age", "sex", "comorbidity"]
+Group = Literal["age", "sex", "comorbidity", "copay"]
 
 
 @app.get("/api/health")
@@ -38,8 +40,24 @@ def kpis():
 
 
 @app.get("/api/funnel")
-def funnel(window: Optional[int] = None):
-    return m.funnel(window)
+def funnel(window: Optional[int] = None, group_by: Optional[Group] = None, group_val: Optional[str] = None):
+    grp = (group_by, group_val) if (group_by and group_val) else None
+    return m.funnel(window, group=grp)
+
+
+@app.get("/api/leave-drivers")
+def leave_drivers(window: Optional[int] = None):
+    return m.leave_drivers(window)
+
+
+@app.get("/api/second-line")
+def second_line():
+    return m.second_line()
+
+
+@app.get("/api/risk-drivers")
+def risk_drivers():
+    return m.risk_drivers()
 
 
 @app.get("/api/pathways")
@@ -97,6 +115,30 @@ def journey(person_id: int):
 
 class Chat(BaseModel):
     question: str
+
+
+class StudyApply(BaseModel):
+    name: Optional[str] = "custom"
+    rules: dict = {}
+
+
+@app.get("/api/study")
+def get_study():
+    return {"sections": study.field_spec(), "presets": study.PRESETS,
+            "active": study.current(), "defaults": {k: v for k, v in config.rules().items() if k in study.FIELD_KEYS}}
+
+
+@app.post("/api/study")
+def apply_study(body: StudyApply):
+    try:
+        return study.apply(body.rules, body.name or "custom")
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.post("/api/study/reset")
+def reset_study():
+    return study.reset()
 
 
 @app.post("/api/chat")

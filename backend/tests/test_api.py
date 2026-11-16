@@ -78,3 +78,69 @@ def test_numbers_grounding_guard():
 
 def test_rule_router_unmatched_returns_none():
     assert agent.rule_route("tell me a joke") is None
+
+
+def test_leave_drivers_reconcile():
+    ld = c.get("/api/leave-drivers").json()
+    f = c.get("/api/funnel").json()
+    assert ld["n_switched"] == f["switched"] and ld["n_discontinued"] == f["discontinued"]
+    assert sum(x["switch_n"] for x in ld["proxy_categories"]) == ld["n_switched"]
+    assert sum(x["discontinue_n"] for x in ld["proxy_categories"]) == ld["n_discontinued"]
+    assert sum(x["n"] for x in ld["post_discontinuation_fate"]) == ld["n_discontinued"]
+    flare = next(x for x in ld["proxy_categories"] if x["category"] == "Inadequate response / flare")
+    assert flare["switch_pct"] > flare["discontinue_pct"]
+
+
+def test_second_line_moa_swap_vs_cycling():
+    sl = c.get("/api/second-line").json()
+    assert sum(a["n"] for a in sl["by_agent"]) == sl["n_switched"]
+    assert sl["persistence_gain_12m_pp"] > 0
+
+
+def test_risk_drivers_and_subgroup_funnel_and_low_ram():
+    import time
+    from app.metrics.core import wh
+
+    w = wh()
+    assert not hasattr(w, "visits") and not hasattr(w, "drugs")
+    rd = c.get("/api/risk-drivers").json()
+    hrs = {r["key"]: r["hr"] for r in rd["discontinuation_cox"]}
+    assert hrs["high_copay"] > 1.2 and hrs["comorb"] > 1.05
+    sf = c.get("/api/funnel?group_by=copay&group_val=%3E%3D%24250%20OOP").json()
+    assert sf["remain_on_therapy"] + sf["discontinued"] + sf["switched"] == sf["evaluable_patients"]
+    t0 = time.perf_counter()
+    assert c.get("/api/survival?event=switch&group=copay").status_code == 200
+    t1 = time.perf_counter()
+    assert c.get("/api/survival?event=switch&group=copay").status_code == 200
+    t2 = time.perf_counter()
+    assert (t2 - t1) <= max((t1 - t0), 0.02)
+
+
+
+def test_study_designer_endpoints():
+    g = c.get("/api/study").json()
+    keys = {f["key"] for s in g["sections"] for f in s["fields"]}
+    assert {"era_gap_days", "switch_window_days", "washout_days", "restart_same_line"} <= keys
+    assert g["defaults"]["era_gap_days"] == 60 and g["active"]["name"] == "default"
+    bad = c.post("/api/study", json={"name": "x", "rules": {"not_a_rule": 5}})
+    assert bad.status_code == 422
+    bad2 = c.post("/api/study", json={"name": "x", "rules": {"funnel_window_days": 9999}})
+    assert bad2.status_code == 422
+
+
+def test_study_apply_changes_cohort_and_reset():
+    before = c.get("/api/funnel").json()
+    try:
+        r = c.post("/api/study", json={"name": "lenient", "rules": {"era_gap_days": 90, "switch_window_days": 120}})
+        assert r.status_code == 200, r.text
+        after = c.get("/api/funnel").json()
+        # a longer permissible gap + wider switch window can only reduce discontinuation
+        assert after["discontinued"] <= before["discontinued"]
+        assert after["switched"] >= before["switched"]
+        assert after["evaluable_patients"] + after["not_evaluable_censored"] == after["index_patients"]
+        assert c.get("/api/kpis").json()["study_name"] == "lenient"
+    finally:
+        c.post("/api/study/reset")
+    assert c.get("/api/kpis").json()["study_name"] == "default"
+    back = c.get("/api/funnel").json()
+    assert back["discontinued"] == before["discontinued"] and back["switched"] == before["switched"]

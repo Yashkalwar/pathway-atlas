@@ -15,6 +15,11 @@ conditions:
   rheumatoid_arthritis: 80809
   joint_pain_symptom: 2000001001
   other_inpatient_cause: 2000001002
+  acute_ra_flare: 2000001003
+  serious_infection: 432250
+  adverse_drug_reaction: 4105886
+measurements:
+  crp: {id: 3020460, name: "C-reactive protein [Mass/volume] in Serum or Plasma", unit: "mg/L", unit_id: 8751, range_high: 10.0}
 visits:
   inpatient: 9201
   outpatient: 9202
